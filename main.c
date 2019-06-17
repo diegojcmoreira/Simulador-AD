@@ -4,8 +4,15 @@
 #include "stack.h"
 #include "queue.h"
 #include "client.h"
+#include "metric.h"
 
 int main() {
+    //Teste estimador
+    double sample[] = {12,13,12,11};
+    meanIC(sample,4);
+
+    /*
+
     // Teste de Pilha
     Stack *stack = createStack(sizeof(int), 1);
     int b, i = 0;
@@ -58,6 +65,7 @@ int main() {
         printf("%lf, %lf, %lf\n", teste.arrivalTime, teste.serviceStartTime, teste.departureTime);
     }
     queueDestroy(fila);
+     */
 
     return 0;
 }

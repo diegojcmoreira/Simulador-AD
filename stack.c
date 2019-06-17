@@ -1,7 +1,7 @@
 #include "stack.h"
 
 Stack* createStack(int memberSize, int capacity) {
-  Stack *s = malloc(sizeof(Stack));
+  Stack *s = (Stack*)malloc(sizeof(Stack));
   
   s -> top = -1;
   s -> memberSize = memberSize;
