@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <iostream>
+#include <random>
 
-double meanIC(double valuesSample[], int sizeSample );
-double varianceIC(double valuesSample[], int sizeSample, double chiSquareLower, double chiSquareUpper );
+double meanIC(double sumValuesSample, double sumValuesSampleSquare, int sizeSample, double value);
+double varianceIC(double sumValuesSample, double sumValuesSampleSquare, int sizeSample, double value);
 
 #endif

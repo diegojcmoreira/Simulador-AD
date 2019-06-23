@@ -5,29 +5,26 @@
 */
 
 
-double meanIC(double valuesSample[], int sizeSample){
+double meanIC(double sumValuesSample, double sumValuesSampleSquare, int sizeSample, double value){
 
     /* Para n>30 os valores da t-student são assintoticos e iguais a normal, logo para 1-alfa=0.95 
     temos que t-student(1-alfa/2)=z(1-alfa/2)=1.960
 
     */
 
-    double tStudent = 1.960;
+    std::student_t_distribution<double> distribution(double(sizeSample));
+
+    double tStudent = distribution(0.95);
+
+    printf("tStudent: %f",tStudent);
 
     //Define mean Estimator
     double meanEstimator = 0;
     double varianceEstimator = 0;
 
-    for(int i=0; i<sizeSample; i++){
-        meanEstimator = meanEstimator + valuesSample[i];
-    }
-    meanEstimator = meanEstimator/sizeSample;
+    meanEstimator = (value + sumValuesSample)/sizeSample;
 
-    for(int i=0; i<sizeSample; i++){
-        varianceEstimator = varianceEstimator + pow((valuesSample[i]- meanEstimator),2);
-    }
-
-    varianceEstimator = varianceEstimator/(sizeSample -1);
+    varianceEstimator = (sumValuesSampleSquare + pow(value,2))/(sizeSample-1) - pow(value + sumValuesSample,2)/(sizeSample*(sizeSample-1));
 
     double lower = meanEstimator - tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
     double upper = meanEstimator + tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
@@ -38,7 +35,7 @@ double meanIC(double valuesSample[], int sizeSample){
 
 }
 
-double varianceIC(double valuesSample[], int sizeSample, double chiSquareLower, double chiSquareUpper ){
+double varianceIC(double sumValuesSample, double sumValuesSampleSquare, int sizeSample, double value){
     /*  alfa=0.05
         alfa/2=0.025
         1-alfa/2=0.975
@@ -47,17 +44,13 @@ double varianceIC(double valuesSample[], int sizeSample, double chiSquareLower, 
     double meanEstimator = 0;
     double varianceEstimator = 0;
 
-    for(int i=0; i<sizeSample; i++){
-        meanEstimator = meanEstimator + valuesSample[i];
-    }
-    meanEstimator = meanEstimator/sizeSample;
+    meanEstimator = (value + sumValuesSampleSquare)/sizeSample;
+    
+    varianceEstimator = (sumValuesSampleSquare + pow(value,2))/(sizeSample-1) - pow(value + sumValuesSample,2)/(sizeSample*(sizeSample-1));
 
-    for(int i=0; i<sizeSample; i++){
-        varianceEstimator = varianceEstimator + pow((valuesSample[i]- meanEstimator),2);
-    }
 
-    double lower = (varianceEstimator/(sizeSample-1))/chiSquareLower;
-    double upper = (varianceEstimator/(sizeSample-1))/chiSquareUpper;
+    //double lower = (varianceEstimator/(sizeSample-1))/chiSquareLower;
+    //double upper = (varianceEstimator/(sizeSample-1))/chiSquareUpper;
 
 
 }
