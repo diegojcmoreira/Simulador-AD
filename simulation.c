@@ -1,10 +1,11 @@
-//gcc -Wall stack.c queue.c client.c exponentialEvent.c main2.c -o main.o -lm
+//gcc -Wall stack.c queue.c client.c exponentialEvent.c metric.c simulation.c -o simulation.o -lm
 //./main.o
 
 #include "stack.h"
 #include "queue.h"
 #include "client.h"
 #include "exponentialEvent.h"
+#include "metric.h"
 
 #define SERVICE_RATE 1
 #define ARRIVAL_RATE 0.9
@@ -14,6 +15,15 @@ void fcfsSimulation() {
     double mean;
     int totalClients = 0, service = 0;
     double timeElapsed = 0;
+
+    //Metricas do tempo na fila de espera
+    SampleMetric meanICW =  createSampleMetric();
+    SampleMetric varianceICW =  createSampleMetric();
+
+    //Metricas do numero de pessoas na fila de espera
+    SampleMetric meanICNq =  createSampleMetric();
+    SampleMetric varianceICNq =  createSampleMetric();
+
     defineSeed(12);
 
     Queue *queueClients = createQueue(sizeof(Client), 1);
@@ -31,7 +41,14 @@ void fcfsSimulation() {
             timeElapsed = timeElapsed + arrivalEvent.exponentialTime; 
 
             //cria cliente que esta chegando
-            Client client = createClient(timeElapsed, timeElapsed, -1); 
+            Client client = createClient(timeElapsed, timeElapsed, -1);
+
+            // Medidas do numero de pessoas na fila
+
+            //printf("Numero de pesssoas na fila agora: %f -> chegada: %d\n",queueClients->rear - queueClients->front,totalClients);
+            //meanIC(&meanICNq, queueClients->rear - queueClients->front, totalClients);
+            //varianceIC(&varianceICNq, queueClients->rear - queueClients->front, totalClients);
+        
 
             //se ninguem esta sendo servido, entao a fila esta vazia
             if(service == 0) { 
@@ -56,10 +73,15 @@ void fcfsSimulation() {
             //cliente termina de ser servido
             clientBeingServiced.departureTime = timeElapsed;
 
+
+            printf("Valor de soma %f\n",meanICW.sumValuesSample);
+            // Medidas do tempo de espera na fila
+            printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime),totalClients);
+            meanIC(&meanICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
+            varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
+
             // --------- METRICAS DEVEM SER CALCULADAS AQUI -----------------
             //printf("Chegada: %lf Servico comeca: %lf Partida: %lf Tempo de servico: %lf Tempo na fila: %lf Tempo no sistema: %lf\n", clientBeingServiced.arrivalTime, clientBeingServiced.serviceStartTime, clientBeingServiced.departureTime, clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime, clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime,clientBeingServiced.departureTime-clientBeingServiced.arrivalTime);
-            mean = mean + (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime)/5000;
-            printf("%lf\n", mean);
 
             // --------------------------------------------------------------
 
@@ -152,8 +174,8 @@ void lcfsSimulation() {
 }
 
 int main() {
-    lcfsSimulation();
-    //fcfsSimulation();
+    //lcfsSimulation();
+    fcfsSimulation();
 
     return 0;
 }
