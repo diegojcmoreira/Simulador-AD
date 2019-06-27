@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "alglib/specialfunctions.h"
 
 // Struct para o intervalo de confianca, seja ele da media ou da variancia
 typedef struct {
