@@ -1,4 +1,4 @@
-//gcc -Wall stack.c queue.c client.c exponentialEvent.c metric.c simulation.c -o simulation.o -lm
+//g++ -Wall stack.c queue.c client.c exponentialEvent.c metric.c simulation.c -o simulation.o -lm
 //./main.o
 
 #include "stack.h"
@@ -15,6 +15,9 @@ void fcfsSimulation() {
     double mean;
     int totalClients = 0, service = 0;
     double timeElapsed = 0;
+    FILE * fp;
+
+    fp = fopen ("C:\\Users\\Visagio\\Documents\\Simulador-AD\\simulationResults.txt","w");
 
     //Metricas do tempo na fila de espera
     SampleMetric meanICW =  createSampleMetric();
@@ -33,7 +36,7 @@ void fcfsSimulation() {
 
     ExponentialEvent endServiceEvent = createExponentialEvent(SERVICE_RATE);
     
-    while(totalClients <= 5000) {
+    while(totalClients <= 1550) {
         //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
         if(arrivalEvent.exponentialTime < endServiceEvent.exponentialTime || service == 0)  { 
 
@@ -76,9 +79,15 @@ void fcfsSimulation() {
 
             printf("Valor de soma %f\n",meanICW.sumValuesSample);
             // Medidas do tempo de espera na fila
+            printf("Tempo de saida: %f", clientBeingServiced.departureTime);
+            printf("Tempo de entrada: %f", clientBeingServiced.serviceStartTime);
+
             printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime),totalClients);
             meanIC(&meanICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
-            varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
+            
+            fprintf (fp, "%d;%lf;%lf\n",totalClients,meanICW.lower, meanICW.upper);
+            
+            //varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
 
             // --------- METRICAS DEVEM SER CALCULADAS AQUI -----------------
             //printf("Chegada: %lf Servico comeca: %lf Partida: %lf Tempo de servico: %lf Tempo na fila: %lf Tempo no sistema: %lf\n", clientBeingServiced.arrivalTime, clientBeingServiced.serviceStartTime, clientBeingServiced.departureTime, clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime, clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime,clientBeingServiced.departureTime-clientBeingServiced.arrivalTime);
@@ -100,6 +109,7 @@ void fcfsSimulation() {
     }
 
     queueDestroy(queueClients);
+    fclose (fp);
 }
 
 void lcfsSimulation() {

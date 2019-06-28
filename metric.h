@@ -20,5 +20,6 @@ typedef struct {
 SampleMetric createSampleMetric(void);
 void meanIC(SampleMetric* sampleMetric, double value, int sizeSample);
 void varianceIC(SampleMetric* sampleMetric, double value, int sizeSample);
+double tStudentValue(int grausLiberdade);
 
 #endif
