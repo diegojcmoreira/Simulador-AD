@@ -1,17 +1,19 @@
-//g++ -Wall stack.c queue.c client.c exponentialEvent.c metric.c simulation.c -o simulation.o -lm
-//./main.o
+//g++ -Wall stack.c queue.c client.c event.c metric.c simulation.c -o simulation.o -lm
+//./simulation.o
 
 #include "stack.h"
 #include "queue.h"
 #include "client.h"
-#include "exponentialEvent.h"
+#include "event.h"
 #include "metric.h"
 
 #define SERVICE_RATE 1
 #define ARRIVAL_RATE 0.9
+#define TOTAL_ROUNDS 3200
+#define EVENT 'e'
 
 void fcfsSimulation() {
-    int rounds = 3200;
+    int rounds = 0;
     double mean;
     int totalClients = 0, service = 0;
     double timeElapsed = 0;
@@ -32,27 +34,20 @@ void fcfsSimulation() {
     Queue *queueClients = createQueue(sizeof(Client), 1);
     Client clientBeingServiced;
     
-    ExponentialEvent arrivalEvent = createExponentialEvent(ARRIVAL_RATE); //gera evento de chegada
+    Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
 
-    ExponentialEvent endServiceEvent = createExponentialEvent(SERVICE_RATE);
+    Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
     
-    while(totalClients <= 1550) {
+    while(totalClients < 38943) {
         //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
-        if(arrivalEvent.exponentialTime < endServiceEvent.exponentialTime || service == 0)  { 
+        if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
 
             //atualiza o tempo total transcorrido
-            timeElapsed = timeElapsed + arrivalEvent.exponentialTime; 
+            timeElapsed = timeElapsed + arrivalEvent.eventTime; 
 
             //cria cliente que esta chegando
             Client client = createClient(timeElapsed, timeElapsed, -1);
-
-            // Medidas do numero de pessoas na fila
-
-            //printf("Numero de pesssoas na fila agora: %f -> chegada: %d\n",queueClients->rear - queueClients->front,totalClients);
-            //meanIC(&meanICNq, queueClients->rear - queueClients->front, totalClients);
-            //varianceIC(&varianceICNq, queueClients->rear - queueClients->front, totalClients);
         
-
             //se ninguem esta sendo servido, entao a fila esta vazia
             if(service == 0) { 
                 service = 1;
@@ -63,15 +58,15 @@ void fcfsSimulation() {
             }
             else {
                 //atualiza o tempo transcorrido para o fim do servico
-                endServiceEvent.exponentialTime = endServiceEvent.exponentialTime - arrivalEvent.exponentialTime;
+                endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
                 queueInsert(queueClients, &client);
             }
-            arrivalEvent = createExponentialEvent(ARRIVAL_RATE); //cria nova chegada
+            arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
 
         }
         else {
             totalClients++;
-            timeElapsed = timeElapsed + endServiceEvent.exponentialTime;
+            timeElapsed = timeElapsed + endServiceEvent.eventTime;
 
             //cliente termina de ser servido
             clientBeingServiced.departureTime = timeElapsed;
@@ -79,9 +74,9 @@ void fcfsSimulation() {
 
             printf("Valor de soma %f\n",meanICW.sumValuesSample);
             // Medidas do tempo de espera na fila
-            printf("Tempo de saida: %f", clientBeingServiced.departureTime);
-            printf("Tempo de entrada: %f", clientBeingServiced.serviceStartTime);
-
+            printf("Tempo de saida: %f\n", clientBeingServiced.departureTime);
+            printf("Tempo de entrada: %f\n", clientBeingServiced.serviceStartTime);
+            mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/38943;
             printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime),totalClients);
             meanIC(&meanICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
             
@@ -89,13 +84,10 @@ void fcfsSimulation() {
             
             //varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
 
-            // --------- METRICAS DEVEM SER CALCULADAS AQUI -----------------
-            //printf("Chegada: %lf Servico comeca: %lf Partida: %lf Tempo de servico: %lf Tempo na fila: %lf Tempo no sistema: %lf\n", clientBeingServiced.arrivalTime, clientBeingServiced.serviceStartTime, clientBeingServiced.departureTime, clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime, clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime,clientBeingServiced.departureTime-clientBeingServiced.arrivalTime);
-
             // --------------------------------------------------------------
 
-            arrivalEvent.exponentialTime = arrivalEvent.exponentialTime - endServiceEvent.exponentialTime;
-            endServiceEvent = createExponentialEvent(SERVICE_RATE);
+            arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
+            endServiceEvent = createEvent(EVENT, SERVICE_RATE);
 
             //se a fila nao esta vazia
             if(queueClients->rear >= queueClients->front) { 
@@ -107,7 +99,7 @@ void fcfsSimulation() {
                 service = 0;
         }
     }
-
+    printf("\n%lf\n", mean);
     queueDestroy(queueClients);
     fclose (fp);
 }
@@ -122,16 +114,16 @@ void lcfsSimulation() {
     Stack *stackClients = createStack(sizeof(Client), 1);
     Client clientBeingServiced;
     
-    ExponentialEvent arrivalEvent = createExponentialEvent(ARRIVAL_RATE); //gera evento de chegada
+    Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
 
-    ExponentialEvent endServiceEvent = createExponentialEvent(SERVICE_RATE);
+    Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
     
     while(totalClients <= 5000) {
         //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
-        if(arrivalEvent.exponentialTime < endServiceEvent.exponentialTime || service == 0)  { 
+        if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
 
             //atualiza o tempo total transcorrido
-            timeElapsed = timeElapsed + arrivalEvent.exponentialTime; 
+            timeElapsed = timeElapsed + arrivalEvent.eventTime; 
 
             //cria cliente que esta chegando
             Client client = createClient(timeElapsed, timeElapsed, -1); 
@@ -146,15 +138,15 @@ void lcfsSimulation() {
             }
             else {
                 //atualiza o tempo transcorrido para o fim do servico
-                endServiceEvent.exponentialTime = endServiceEvent.exponentialTime - arrivalEvent.exponentialTime;
+                endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
                 stackPush(stackClients, &client);
             }
-            arrivalEvent = createExponentialEvent(ARRIVAL_RATE); //cria nova chegada
+            arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
 
         }
         else {
             totalClients++;
-            timeElapsed = timeElapsed + endServiceEvent.exponentialTime;
+            timeElapsed = timeElapsed + endServiceEvent.eventTime;
 
             //cliente termina de ser servido
             clientBeingServiced.departureTime = timeElapsed;
@@ -166,8 +158,8 @@ void lcfsSimulation() {
 
             // --------------------------------------------------------------
 
-            arrivalEvent.exponentialTime = arrivalEvent.exponentialTime - endServiceEvent.exponentialTime;
-            endServiceEvent = createExponentialEvent(SERVICE_RATE);
+            arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
+            endServiceEvent = createEvent(EVENT, SERVICE_RATE);
 
             //se a fila nao esta vazia
             if(stackClients->top > 0) { 
