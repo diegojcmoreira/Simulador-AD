@@ -92,6 +92,7 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
     */
 
     //double tStudent = tStudentValue(sizeSample);
+    printf("Value: %f\n", value);
 
     //Define mean Estimator
     double meanEstimator = 0;
@@ -111,7 +112,7 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
 
 }
 
-void meanIC(SampleMetric* sampleMetric, double value, int sizeSample){
+void meanIC(SampleMetric* sampleMetric, int sizeSample){
     double tStudent = tStudentValue(sizeSample);
     sampleMetric->lower = sampleMetric->meanEstimator - tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));
     sampleMetric->upper = sampleMetric->meanEstimator + tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));

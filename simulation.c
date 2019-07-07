@@ -8,14 +8,15 @@
 #include "metric.h"
 
 #define SERVICE_RATE 1
-#define ARRIVAL_RATE 2
-#define TOTAL_ROUNDS 1
+#define ARRIVAL_RATE 0.2
+#define TOTAL_ROUNDS 3200
 #define KMIN 15
-#define EVENT 'd'
+#define EVENT 'e'
 
 void fcfsSimulation() {
     int rounds = 0;
     double mean;
+    int roundClient = 0;
     int totalClients = 0, service = 0;
     double timeElapsed = 0;
     FILE * fp;
@@ -43,7 +44,7 @@ void fcfsSimulation() {
 
     
     
-        while(totalClients < KMIN) {
+        while(roundClient < KMIN) {
             
             //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
             if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
@@ -64,17 +65,18 @@ void fcfsSimulation() {
                 }
                 else {
                     //atualiza o tempo transcorrido para o fim do servico
-                    printf("Aqui\n");
+                    //printf("Aqui\n");
                     endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
                     queueInsert(queueClients, &client);
                 }
                 arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
-                printf("tamanho da fila: %d - cliente: %d\n", queueClients->size, totalClients);
+                //printf("tamanho da fila: %d - cliente: %d\n", queueClients->size, totalClients);
 
 
             }
             else {
                 totalClients++;
+                roundClient++;
                 timeElapsed = timeElapsed + endServiceEvent.eventTime;
 
                 //cliente termina de ser servido
@@ -83,7 +85,7 @@ void fcfsSimulation() {
 
                 //printf("Valor de soma %f\n",meanICW.sumValuesSample);
                 // Medidas do tempo de espera na fila
-                printf("Cliente: %d - Chegada: %f - Tempo servico: %d\n", totalClients,clientBeingServiced.arrivalTime,clientBeingServiced.serviceStartTime);
+                //printf("Cliente: %d - Chegada: %f - Tempo servico: %d\n", totalClients,clientBeingServiced.arrivalTime,clientBeingServiced.serviceStartTime);
                 mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/38943;
                 //printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime),totalClients);
                 sampleEstimator(&meanICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
@@ -106,14 +108,17 @@ void fcfsSimulation() {
                     service = 0;
             }
         }
+        printf("Valor total: %f - Valor total Sample:%f\n", meanICW.sumValuesSampleSquare, meanICW.sumValuesSample);
         printf("Rodada %d - EM: %f - EV: %f\n",rounds,meanICW.meanEstimator,meanICW.varianceEstimator);
         fprintf (fp, "%d;%lf;%lf\n",rounds,meanICW.meanEstimator, meanICW.varianceEstimator);
 
-        totalClients = 0;
+        roundClient = 0;
         
         queueDestroy(queueClients);
     }    
     //printf("\n%lf\n", mean);
+    meanIC(&meanICW, totalClients);
+    printf("EM(LOWER): %f - EM(UPPER): %f\n",rounds,meanICW.lower,meanICW.upper);
     
     fclose (fp);
 }
