@@ -32,4 +32,8 @@ void queueInsert(Queue *q, void *data);
 //retorna 0 se a operacao foi bem sucedida e 1 se nao
 int queueRemove(Queue *q, void *target);
 
+//retorna o numero de elementos na fila
+//recebe a fila cujo tamanho eh desejado
+int queueSize(Queue *q);
+
 #endif

@@ -43,11 +43,11 @@ void queueInsert(Queue *q,  void *element) {
 }
 
 int queueRemove(Queue *q,  void *target) {
-  q -> size--;
   if (q->rear == -1) {
     return 1;
   }
 
+  q -> size--;
   //calcula posicao de inicio do primeiro elemento da fila
   void* source = (char*) q -> data + (q -> front * q -> memberSize);
   q->front++;
@@ -59,4 +59,8 @@ int queueRemove(Queue *q,  void *target) {
 void queueDestroy(Queue *q) {
   free(q -> data);
   free(q);
+}
+
+int queueSize(Queue *q) {
+  return q -> size;
 }

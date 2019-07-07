@@ -44,3 +44,12 @@ void stackDestroy(Stack *s) {
   free(s -> data);
   free(s);
 }
+
+int stackSize(Stack *s) {
+  int size = s -> top;
+
+  if (size < 0)
+    return 0;
+  else
+    return size + 1;
+}

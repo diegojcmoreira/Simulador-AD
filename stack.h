@@ -30,4 +30,8 @@ void stackPush(Stack *s, void *data);
 //retorna 0 se a operacao foi bem sucedida e 1 se nao
 int stackPop(Stack *s, void *target);
 
+//retorna o numero de elementos na pilha
+//recebe a pilha cujo tamanho eh desejado
+int stackSize(Stack *s);
+
 #endif
