@@ -17,7 +17,7 @@ Event createEvent(char type, double lambda) {
 	if (type == 'e') //o caractere 'e' indica que o evento segue uma distribuicao exponencial
 		event.eventTime = generateExponentialNumber(lambda);
 	else if (type == 'd') //o caractere 'd' indica que o evento segue uma distribuicao deterministica
-		event.eventTime = lambda;
+		event.eventTime = 1/lambda;
 	else
 		printf("Parâmetro recebido não reconhecido!");
 
