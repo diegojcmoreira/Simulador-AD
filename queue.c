@@ -8,6 +8,7 @@ Queue* createQueue(int memberSize, int capacity) {
   q -> memberSize = memberSize;
   q -> capacity = capacity;
   q -> data = malloc(capacity*memberSize);
+  q -> size = 0;
   
   return q;
 }
@@ -35,12 +36,14 @@ void queueInsert(Queue *q,  void *element) {
     expandQueue(q); //aumenta capacidade da fila
   
   q -> rear++;
+  q -> size++;
   //calcula posicao de inicio do novo elemento
   void* target = (char*) q -> data + (q -> rear*q -> memberSize);
   memcpy(target, element, q -> memberSize);
 }
 
 int queueRemove(Queue *q,  void *target) {
+  q -> size--;
   if (q->rear == -1) {
     return 1;
   }

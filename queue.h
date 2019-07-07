@@ -11,6 +11,7 @@ typedef struct {
   void* data; //dados armazenados na fila 
   int front; //posicao do primeiro elemento da fila
   int rear; //posicao do ultimo elemento da fila
+  int size;
 } Queue;
 
 //aloca espaco de memoria para a fila e retorna um ponteiro para ela

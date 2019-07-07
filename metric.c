@@ -11,6 +11,8 @@ SampleMetric createSampleMetric(void){
   sampleMetric.upper = 0;
   sampleMetric.sumValuesSample = 0;
   sampleMetric.sumValuesSampleSquare = 0;
+  sampleMetric.meanEstimator = 0;
+  sampleMetric.varianceEstimator = 0;
   
 
   return sampleMetric;
@@ -82,40 +84,39 @@ double tStudentValue(int grausLiberdade){
 }
 
 
-void meanIC(SampleMetric* sampleMetric, double value, int sizeSample){
+void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
 
     /* Para n>30 os valores da t-student são assintoticos e iguais a normal, logo para 1-alfa=0.95 
     temos que t-student(1-alfa/2)=z(1-alfa/2)=1.960
 
     */
 
-    double tStudent = tStudentValue(sizeSample);
+    //double tStudent = tStudentValue(sizeSample);
 
     //Define mean Estimator
     double meanEstimator = 0;
     double varianceEstimator = 0;
 
     sampleMetric->sumValuesSample = sampleMetric->sumValuesSample + value;
-    printf(" antes: %f -> Depiis: %f\n", value,sampleMetric->sumValuesSample );
+    //printf(" antes: %f -> Depiis: %f\n", value,sampleMetric->sumValuesSample );
     sampleMetric->sumValuesSampleSquare = (sampleMetric->sumValuesSampleSquare + pow(value,2));
     //Só comeca a calcular a variancia e a media a partir de duas coletas
     if (sizeSample > 1) {
 
-        meanEstimator = sampleMetric->sumValuesSample/sizeSample;
-        varianceEstimator = sampleMetric->sumValuesSampleSquare/(sizeSample-1) - pow(sampleMetric->sumValuesSample,2)/(sizeSample*(sizeSample-1));
+        sampleMetric->meanEstimator = sampleMetric->sumValuesSample/sizeSample;
+        sampleMetric->varianceEstimator = sampleMetric->sumValuesSampleSquare/(sizeSample-1) - pow(sampleMetric->sumValuesSample,2)/(sizeSample*(sizeSample-1));
 
-        printf("Estimador media: %lf\n",meanEstimator);
-        printf("Estimador variancia: %lf\n",varianceEstimator);
-
-        sampleMetric->lower = meanEstimator - tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
-        sampleMetric->upper = meanEstimator + tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
-        
-        
-
-        printf("lower = %lf \n",sampleMetric->lower);
-        printf("upper = %lf \n\n",sampleMetric->upper);
     }
         
+
+}
+
+void meanIC(SampleMetric* sampleMetric, double value, int sizeSample){
+    double tStudent = tStudentValue(sizeSample);
+    sampleMetric->lower = sampleMetric->meanEstimator - tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));
+    sampleMetric->upper = sampleMetric->meanEstimator + tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));
+    printf("lower = %lf \n",sampleMetric->lower);
+    printf("upper = %lf \n\n",sampleMetric->upper);
 
 }
 

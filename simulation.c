@@ -8,9 +8,10 @@
 #include "metric.h"
 
 #define SERVICE_RATE 1
-#define ARRIVAL_RATE 0.9
-#define TOTAL_ROUNDS 3200
-#define EVENT 'e'
+#define ARRIVAL_RATE 2
+#define TOTAL_ROUNDS 1
+#define KMIN 15
+#define EVENT 'd'
 
 void fcfsSimulation() {
     int rounds = 0;
@@ -19,7 +20,7 @@ void fcfsSimulation() {
     double timeElapsed = 0;
     FILE * fp;
 
-    fp = fopen ("C:\\Users\\Visagio\\Documents\\Simulador-AD\\simulationResults.txt","w");
+    fp = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\simulation.txt","w");
 
     //Metricas do tempo na fila de espera
     SampleMetric meanICW =  createSampleMetric();
@@ -30,77 +31,90 @@ void fcfsSimulation() {
     SampleMetric varianceICNq =  createSampleMetric();
 
     defineSeed(12);
+    while(rounds < TOTAL_ROUNDS) {
+        rounds++;
 
-    Queue *queueClients = createQueue(sizeof(Client), 1);
-    Client clientBeingServiced;
-    
-    Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
-
-    Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
-    
-    while(totalClients < 38943) {
-        //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
-        if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
-
-            //atualiza o tempo total transcorrido
-            timeElapsed = timeElapsed + arrivalEvent.eventTime; 
-
-            //cria cliente que esta chegando
-            Client client = createClient(timeElapsed, timeElapsed, -1);
+        Queue *queueClients = createQueue(sizeof(Client), 1);
+        Client clientBeingServiced;
         
-            //se ninguem esta sendo servido, entao a fila esta vazia
-            if(service == 0) { 
-                service = 1;
-                client.serviceStartTime = timeElapsed;
+        Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
 
-                //se ninguem esta sendo servido, o cliente que chegou eh atendido imediatamente
-                clientBeingServiced = client; 
+        Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
+    
+    
+        while(totalClients < KMIN) {
+            
+            //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
+            if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
+
+                //atualiza o tempo total transcorrido
+                timeElapsed = timeElapsed + arrivalEvent.eventTime; 
+
+                //cria cliente que esta chegando
+                Client client = createClient(timeElapsed, timeElapsed, -1);
+            
+                //se ninguem esta sendo servido, entao a fila esta vazia
+                if(service == 0) { 
+                    service = 1;
+                    client.serviceStartTime = timeElapsed;
+
+                    //se ninguem esta sendo servido, o cliente que chegou eh atendido imediatamente
+                    clientBeingServiced = client; 
+                }
+                else {
+                    //atualiza o tempo transcorrido para o fim do servico
+                    printf("Aqui\n");
+                    endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
+                    queueInsert(queueClients, &client);
+                }
+                arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
+                printf("tamanho da fila: %d - cliente: %d\n", queueClients->size, totalClients);
+
+
             }
             else {
-                //atualiza o tempo transcorrido para o fim do servico
-                endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
-                queueInsert(queueClients, &client);
+                totalClients++;
+                timeElapsed = timeElapsed + endServiceEvent.eventTime;
+
+                //cliente termina de ser servido
+                clientBeingServiced.departureTime = timeElapsed;
+
+
+                //printf("Valor de soma %f\n",meanICW.sumValuesSample);
+                // Medidas do tempo de espera na fila
+                printf("Cliente: %d - Chegada: %f - Tempo servico: %d\n", totalClients,clientBeingServiced.arrivalTime,clientBeingServiced.serviceStartTime);
+                mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/38943;
+                //printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime),totalClients);
+                sampleEstimator(&meanICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
+                
+                
+                //varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
+
+                // --------------------------------------------------------------
+
+                arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
+                endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
+                //se a fila nao esta vazia
+                if(queueClients->rear >= queueClients->front) { 
+                    service = 1;
+                    queueRemove(queueClients, &clientBeingServiced);
+                    clientBeingServiced.serviceStartTime = timeElapsed;
+                }
+                else
+                    service = 0;
             }
-            arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
-
         }
-        else {
-            totalClients++;
-            timeElapsed = timeElapsed + endServiceEvent.eventTime;
+        printf("Rodada %d - EM: %f - EV: %f\n",rounds,meanICW.meanEstimator,meanICW.varianceEstimator);
+        fprintf (fp, "%d;%lf;%lf\n",rounds,meanICW.meanEstimator, meanICW.varianceEstimator);
 
-            //cliente termina de ser servido
-            clientBeingServiced.departureTime = timeElapsed;
-
-
-            printf("Valor de soma %f\n",meanICW.sumValuesSample);
-            // Medidas do tempo de espera na fila
-            printf("Tempo de saida: %f\n", clientBeingServiced.departureTime);
-            printf("Tempo de entrada: %f\n", clientBeingServiced.serviceStartTime);
-            mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/38943;
-            printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime),totalClients);
-            meanIC(&meanICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
-            
-            fprintf (fp, "%d;%lf;%lf\n",totalClients,meanICW.lower, meanICW.upper);
-            
-            //varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
-
-            // --------------------------------------------------------------
-
-            arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
-            endServiceEvent = createEvent(EVENT, SERVICE_RATE);
-
-            //se a fila nao esta vazia
-            if(queueClients->rear >= queueClients->front) { 
-                service = 1;
-                queueRemove(queueClients, &clientBeingServiced);
-                clientBeingServiced.serviceStartTime = timeElapsed;
-            }
-            else
-                service = 0;
-        }
-    }
-    printf("\n%lf\n", mean);
-    queueDestroy(queueClients);
+        totalClients = 0;
+        
+        queueDestroy(queueClients);
+    }    
+    //printf("\n%lf\n", mean);
+    
     fclose (fp);
 }
 
