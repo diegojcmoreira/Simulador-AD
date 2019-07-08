@@ -8,10 +8,10 @@
 #include "metric.h"
 
 #define SERVICE_RATE 1
-#define ARRIVAL_RATE 0.9
-#define TOTAL_ROUNDS 2500
-#define KMIN 15
-#define EVENT 'e'
+#define ARRIVAL_RATE 2
+#define TOTAL_ROUNDS 1
+#define KMIN 100
+#define EVENT 'd'
 
 void fcfsSimulation() {
     int rounds = 0;
@@ -31,6 +31,7 @@ void fcfsSimulation() {
     SampleMetric meanICNq =  createSampleMetric();
     SampleMetric varianceICNq =  createSampleMetric();
 
+
     defineSeed(12);
     while(rounds < TOTAL_ROUNDS) {
         rounds++;
@@ -41,6 +42,7 @@ void fcfsSimulation() {
         Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
 
         Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
     
         while(roundClient < KMIN) {
             
@@ -51,12 +53,17 @@ void fcfsSimulation() {
                 timeElapsed = timeElapsed + arrivalEvent.eventTime; 
 
                 //cria cliente que esta chegando
-                Client client = createClient(timeElapsed, timeElapsed, -1);
-            
+                Client client = createClient(timeElapsed, timeElapsed, -1,queueClients -> size);
+
                 //se ninguem esta sendo servido, entao a fila esta vazia
                 if(service == 0) { 
                     service = 1;
+
+                    
+
                     client.serviceStartTime = timeElapsed;
+
+                    //printf("cliente: %d - Tempo inicio servico: %d\n",roundClient,timeElapsed);
 
                     //se ninguem esta sendo servido, o cliente que chegou eh atendido imediatamente
                     clientBeingServiced = client; 
@@ -67,46 +74,51 @@ void fcfsSimulation() {
                     queueInsert(queueClients, &client);
                 }
                 arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
-                //printf("tamanho da fila: %d - cliente: %d\n", queueClients->size, totalClients);
             }
             else {
                 totalClients++;
                 roundClient++;
                 timeElapsed = timeElapsed + endServiceEvent.eventTime;
 
+                
+
                 //cliente termina de ser servido
                 clientBeingServiced.departureTime = timeElapsed;
 
-                //printf("Valor de soma %f\n",meanICW.sumValuesSample);
                 // Medidas do tempo de espera na fila
-                //printf("Cliente: %d - Chegada: %f - Tempo servico: %d\n", totalClients,clientBeingServiced.arrivalTime,clientBeingServiced.serviceStartTime);
-                mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/KMIN;
-                printf("\nespera: %lf\n", clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime);
-                printf("\n fila: %d\n", queueSize(queueClients));
-                //printf("Tempo que o cliente esperou: %f para um total de %d \n", (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime),totalClients);
-                sampleEstimator(&meanICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
-                
-                //varianceIC(&varianceICW, (clientBeingServiced.departureTime - clientBeingServiced.serviceStartTime), totalClients);
 
-                // --------------------------------------------------------------
+                fprintf (fp, "%d;%lf;%lf;%lf;%d\n",roundClient,clientBeingServiced.arrivalTime, (clientBeingServiced.departureTime-clientBeingServiced.serviceStartTime),(clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime),clientBeingServiced.waintingListSize);
+
+
+                mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/KMIN;
+                sampleEstimator(&meanICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
+                sampleEstimator(&varianceICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
+                sampleEstimator(&meanICNq, clientBeingServiced.waintingListSize, totalClients);
+                sampleEstimator(&varianceICNq, clientBeingServiced.waintingListSize, totalClients);
+                
 
                 arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
+
                 endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
 
                 //se a fila nao esta vazia
                 if(queueClients->rear >= queueClients->front) { 
                     service = 1;
                     queueRemove(queueClients, &clientBeingServiced);
+
                     clientBeingServiced.serviceStartTime = timeElapsed;
                 }
                 else
                     service = 0;
+
+
             }
         }
-        printf("Valor total: %f - Valor total Sample:%f\n", meanICW.sumValuesSampleSquare, meanICW.sumValuesSample);
-        printf("Rodada %d - EM: %f - EV: %f\n",rounds,meanICW.meanEstimator,meanICW.varianceEstimator);
-        fprintf (fp, "%d;%lf;%lf\n",rounds,meanICW.meanEstimator, meanICW.varianceEstimator);
-        printf("\n%lf\n", mean);
+        printf("[MEDIA]Rodada %d - EM: %f - EV: %f\n",rounds,meanICW.meanEstimator,meanICW.varianceEstimator);
+        printf("[VARIA]Rodada %d - EM: %f - EV: %f\n",rounds,meanICNq.meanEstimator,meanICNq.varianceEstimator);
+        //fprintf (fp, "%d;%lf;%lf\n",rounds,meanICW.meanEstimator, meanICW.varianceEstimator);
+        //printf("\n%lf\n", mean);
 
         roundClient = 0;
         
@@ -114,8 +126,18 @@ void fcfsSimulation() {
     }    
 
     meanIC(&meanICW, totalClients);
-    printf("EM(LOWER): %f - EM(UPPER): %f\n",rounds,meanICW.lower,meanICW.upper);
-    
+    varianceIC(&varianceICW, totalClients);
+    meanIC(&meanICNq, totalClients);
+    varianceIC(&varianceICNq, totalClients);
+
+    printf("[MEDIA(W) ]: REAL: %f -> [%f,%f]\n",meanICW.meanEstimator,meanICW.lower,meanICW.upper);
+    printf("[VARIA(W) ]: REAL: %f -> [%f,%f]\n",varianceICW.varianceEstimator,varianceICW.lower,varianceICW.upper);
+    printf("[MEDIA(Nq)]: REAL: %f -> [%f,%f]\n",meanICNq.meanEstimator,meanICNq.lower,meanICNq.upper);
+    printf("[VARIA(Nq)]: REAL: %f -> [%f,%f]\n",varianceICNq.varianceEstimator,varianceICNq.lower,varianceICNq.upper);
+    printf("Precicion ICMedia[W ]: %f\n",meanICW.precisionIC);
+    printf("Precicion ICVaria[W ]: %f\n",varianceICW.precisionIC);
+    printf("Precicion ICMedia[Nq]: %f\n",meanICNq.precisionIC);
+    printf("Precicion ICVaria[Nq]: %f\n",varianceICNq.precisionIC);
     fclose (fp);
 }
 
@@ -141,7 +163,7 @@ void lcfsSimulation() {
             timeElapsed = timeElapsed + arrivalEvent.eventTime; 
 
             //cria cliente que esta chegando
-            Client client = createClient(timeElapsed, timeElapsed, -1); 
+            Client client = createClient(timeElapsed, timeElapsed, -1,stackClients -> size); 
 
             //se ninguem esta sendo servido, entao a fila esta vazia
             if(service == 0) { 

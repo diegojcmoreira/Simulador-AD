@@ -7,6 +7,7 @@ Stack* createStack(int memberSize, int capacity) {
   s -> memberSize = memberSize;
   s -> capacity = capacity;
   s -> data = malloc(capacity*memberSize);
+  s -> size = 0;
   
   return s;
 }
@@ -23,6 +24,7 @@ void stackPush(Stack *s,  void *element) {
     expandStack(s); //aumenta capacidade da pilha
   
   s -> top++;
+  s -> size++;
   //calcula posicao de inicio do novo elemento
   void* target = (char*) s -> data + (s -> top*s -> memberSize);
   memcpy(target, element, s -> memberSize);
@@ -36,6 +38,7 @@ int stackPop(Stack *s,  void *target) {
   //calcula posicao de inicio do ultimo elemento da pilha
   void* source = (char*) s -> data + (s -> top * s -> memberSize);
   s->top--;
+  s->size--;
   memcpy(target, source, s->memberSize);
   return 0;
 }

@@ -10,6 +10,7 @@ typedef struct {
   int capacity; //capacidade da pilha
   void* data; //dados armazenados na pilha 
   int top; //posicao do ultimo elemento da pilha
+  int size; //numero de elementos na pilha
 } Stack;
 
 //aloca espaco de memoria para a pilha e retorna um ponteiro para ela

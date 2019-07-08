@@ -15,6 +15,7 @@ typedef struct {
   double sumValuesSampleSquare; // (somatorio das amostras até agora)^2
   double meanEstimator;
   double varianceEstimator;
+  double precisionIC; 
 
 
 } SampleMetric;
@@ -22,7 +23,7 @@ typedef struct {
 
 SampleMetric createSampleMetric(void);
 void meanIC(SampleMetric* sampleMetric, int sizeSample);
-void varianceIC(SampleMetric* sampleMetric, double value, int sizeSample);
+void varianceIC(SampleMetric* sampleMetric, int sizeSample);
 double tStudentValue(int grausLiberdade);
 void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample);
 
