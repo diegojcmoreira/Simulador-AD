@@ -8,140 +8,210 @@
 #include "metric.h"
 
 #define SERVICE_RATE 1
-#define ARRIVAL_RATE 2
-#define TOTAL_ROUNDS 1
-#define KMIN 100
-#define EVENT 'd'
+#define TOTAL_ROUNDS 3200
+#define EVENT 'e'
 
-void fcfsSimulation() {
+void fcfsSimulation(int KMIN, float ARRIVAL_RATE) {
+    
     int rounds = 0;
     double mean;
     int roundClient = 0;
     int totalClients = 0, service = 0;
     double timeElapsed = 0;
-    FILE * fp;
+    int overlappingICs = 0;
 
-    fp = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\simulation.txt","w");
+    // Metricas da simulaçao, IC(lower e upper) e precisão do IC para media e variacia de W e Nq
 
-    //Metricas do tempo na fila de espera
-    SampleMetric meanICW =  createSampleMetric();
-    SampleMetric varianceICW =  createSampleMetric();
-
-    //Metricas do numero de pessoas na fila de espera
-    SampleMetric meanICNq =  createSampleMetric();
-    SampleMetric varianceICNq =  createSampleMetric();
-
-
-    defineSeed(12);
-    while(rounds < TOTAL_ROUNDS) {
-        rounds++;
-        mean = 0;
-        Queue *queueClients = createQueue(sizeof(Client), 1);
-        Client clientBeingServiced;
-        
-        Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
-
-        Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+    //Média da media das amostras de cada rodada de (Tempo de espera)
+    double tStudentMeanLowerW, tStudentMeanUpperW, tStudentMeanPrecisionW, tStudentMeanCenterW ;
 
     
-        while(roundClient < KMIN) {
+    //media da variancia das amostras de cada rodada de (Tempo de espera)   
+    double tStudentVarianceLowerW, tStudentVarianceUpperW, tStudentVariancePrecisionW, tStudentVarianceCenterW;
+    //variancia da variancia das amostras de cada rodada de (Tempo de espera)       
+    double chiSquareVarianceLowerW, chiSquareVarianceUpperW, chiSquareVariancePrecisionW, chiSquareVarianceCenterW;
+
+    
+    //Média da media das amostras de cada rodada de (Numero de pessoas na fila de espera)   
+    double tStudentMeanLowerNq, tStudentMeanUpperNq, tStudentMeanPrecisionNq, tStudentMeanCenterNq;
+    
+    
+    //media da variancia das amostras de cada rodada de (Numero de pessoas na fila de espera)
+    double tStudentVarianceLowerNq, tStudentVarianceUpperNq, tStudentVariancePrecisionNq, tStudentVarianceCenterNq;
+    //variancia da variancia das amostras de cada rodada de (Numero de pessoas na fila de espera)
+    double chiSquareVarianceLowerNq, chiSquareVarianceUpperNq, chiSquareVariancePrecisionNq, chiSquareVarianceCenterNq;
+    
+
+    double roundsVarianceEstimatorW[TOTAL_ROUNDS] = {0};
+    double roundsMeanEstimatorW[TOTAL_ROUNDS] = {0};
+    double roundsVarianceEstimatorNq[TOTAL_ROUNDS] = {0};
+    double roundsMeanEstimatorNq[TOTAL_ROUNDS] = {0};
+
+    FILE * kMetric, *roundMetric;
+
+
+    kMetric = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\Valores_Para_K.txt","w");
+    roundMetric = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\Valores_Por_Rodada.txt","w");
+    
+
+    defineSeed(12);
+
+    while(overlappingICs == 0){
+        overlappingICs = 1;
+
+        // reiniciar simulação com k maior
+        rounds = 0;
+        roundClient = 0;
+        totalClients = 0;
+        service = 0;
+        timeElapsed = 0;
+
+        printf("Iniciando processo com valor de K = %d\n", KMIN);
+        
+        while(rounds < TOTAL_ROUNDS) {
+
+            //Metricas do tempo na fila de espera
+            SampleMetric metricW =  createSampleMetric();
+
+            //Metricas do numero de pessoas na fila de espera
+            SampleMetric metricNq =  createSampleMetric();
             
-            //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
-            if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
+            Queue *queueClients = createQueue(sizeof(Client), 1);
+            Client clientBeingServiced;
+            
+            Event arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
 
-                //atualiza o tempo total transcorrido
-                timeElapsed = timeElapsed + arrivalEvent.eventTime; 
+            Event endServiceEvent = createEvent(EVENT, SERVICE_RATE);
 
-                //cria cliente que esta chegando
-                Client client = createClient(timeElapsed, timeElapsed, -1,queueClients -> size);
+            roundClient = 0;
+            service = 0;
 
-                //se ninguem esta sendo servido, entao a fila esta vazia
-                if(service == 0) { 
-                    service = 1;
+        
+            while(roundClient < KMIN) {
+                
+                //se o tempo de chegada eh menor que o tempo restante para o termino do servico(duracao do servico) ou se nao ha ninguem sendo servido, e se mais uma chegada nao superar o numero de clientes da rodada
+                if(arrivalEvent.eventTime < endServiceEvent.eventTime || service == 0)  { 
 
-                    
+                    //atualiza o tempo total transcorrido
+                    timeElapsed = timeElapsed + arrivalEvent.eventTime; 
 
-                    client.serviceStartTime = timeElapsed;
+                    //cria cliente que esta chegando
+                    Client client = createClient(timeElapsed, timeElapsed, -1,queueClients -> size);
 
-                    //printf("cliente: %d - Tempo inicio servico: %d\n",roundClient,timeElapsed);
+                    //se ninguem esta sendo servido, entao a fila esta vazia
+                    if(service == 0) { 
+                        service = 1;
 
-                    //se ninguem esta sendo servido, o cliente que chegou eh atendido imediatamente
-                    clientBeingServiced = client; 
+                        
+
+                        client.serviceStartTime = timeElapsed;
+
+                        //se ninguem esta sendo servido, o cliente que chegou eh atendido imediatamente
+                        clientBeingServiced = client; 
+                    }
+                    else {
+                        //atualiza o tempo transcorrido para o fim do servico
+                        endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
+                        queueInsert(queueClients, &client);
+                    }
+                    arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
                 }
                 else {
-                    //atualiza o tempo transcorrido para o fim do servico
-                    endServiceEvent.eventTime = endServiceEvent.eventTime - arrivalEvent.eventTime;
-                    queueInsert(queueClients, &client);
+                    totalClients++;
+                    roundClient++;
+                    timeElapsed = timeElapsed + endServiceEvent.eventTime;
+
+
+                    //cliente termina de ser servido
+                    clientBeingServiced.departureTime = timeElapsed;
+
+
+                    //atualizando estimadores
+                    sampleEstimator(&metricW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), roundClient);
+                    sampleEstimator(&metricNq, clientBeingServiced.waintingListSize, roundClient);
+
+                    arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
+
+                    endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
+
+                    //se a fila nao esta vazia
+                    if(queueClients->rear >= queueClients->front) { 
+                        service = 1;
+                        queueRemove(queueClients, &clientBeingServiced);
+
+                        clientBeingServiced.serviceStartTime = timeElapsed;
+                    }
+                    else
+                        service = 0;
+
+
                 }
-                arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //cria nova chegada
             }
-            else {
-                totalClients++;
-                roundClient++;
-                timeElapsed = timeElapsed + endServiceEvent.eventTime;
+            // Atualizando metricas da rodada - W
+            roundsMeanEstimatorW[rounds] = metricW.meanEstimator;
+            roundsVarianceEstimatorW[rounds] = metricW.varianceEstimator;
 
-                
-
-                //cliente termina de ser servido
-                clientBeingServiced.departureTime = timeElapsed;
-
-                // Medidas do tempo de espera na fila
-
-                fprintf (fp, "%d;%lf;%lf;%lf;%d\n",roundClient,clientBeingServiced.arrivalTime, (clientBeingServiced.departureTime-clientBeingServiced.serviceStartTime),(clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime),clientBeingServiced.waintingListSize);
+            // Atualizando metricas da rodada - Nq
+            roundsMeanEstimatorNq[rounds] = metricNq.meanEstimator;
+            roundsVarianceEstimatorNq[rounds] = metricNq.varianceEstimator;
 
 
-                mean = mean + (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime)/KMIN;
-                sampleEstimator(&meanICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
-                sampleEstimator(&varianceICW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), totalClients);
-                sampleEstimator(&meanICNq, clientBeingServiced.waintingListSize, totalClients);
-                sampleEstimator(&varianceICNq, clientBeingServiced.waintingListSize, totalClients);
-                
-
-                arrivalEvent.eventTime = arrivalEvent.eventTime - endServiceEvent.eventTime;
-
-                endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+            fprintf (roundMetric, "%d,%d,%f,%f,%f,%f\n",rounds,KMIN,metricW.meanEstimator,metricW.varianceEstimator,metricNq.meanEstimator,metricNq.varianceEstimator);
 
 
-                //se a fila nao esta vazia
-                if(queueClients->rear >= queueClients->front) { 
-                    service = 1;
-                    queueRemove(queueClients, &clientBeingServiced);
-
-                    clientBeingServiced.serviceStartTime = timeElapsed;
-                }
-                else
-                    service = 0;
 
 
-            }
+            rounds++;        
+            queueDestroy(queueClients);
+        }    
+
+
+        //Tempo medio de espera na fila
+        meanIC(roundsMeanEstimatorW, TOTAL_ROUNDS, &tStudentMeanLowerW, &tStudentMeanUpperW, &tStudentMeanPrecisionW,&tStudentMeanCenterW);
+        //varianceICChiSquare(roundsMeanEstimatorW, TOTAL_ROUNDS, KMIN, &tStudentVarianceLowerW, &tStudentVarianceLowerW, &tStudentVariancePrecisionW);
+
+        //Variancia do tempo medio de espera na fila
+        //TStudent
+        meanIC(roundsVarianceEstimatorW, TOTAL_ROUNDS, &tStudentVarianceLowerW, &tStudentVarianceUpperW, &tStudentVariancePrecisionW, &tStudentVarianceCenterW);
+        //ChiSquare
+        varianceIC(roundsVarianceEstimatorW, TOTAL_ROUNDS, KMIN, &chiSquareVarianceLowerW, &chiSquareVarianceUpperW, &chiSquareVariancePrecisionW, &chiSquareVarianceCenterW);
+
+        //Número médio de pessoas na fila de espera
+        meanIC(roundsMeanEstimatorNq, TOTAL_ROUNDS, &tStudentMeanLowerNq, &tStudentMeanUpperNq, &tStudentMeanPrecisionNq,&tStudentMeanCenterNq);
+        //varianceICChiSquare(roundsMeanEstimatorNq, TOTAL_ROUNDS, KMIN, &tStudentVarianceLowerNq, &tStudentVarianceUpperNq, &tStudentVariancePrecisionNq);
+
+        //Variancia do numero de pessoas na fila de espera
+        //tstudent    
+        meanIC(roundsVarianceEstimatorNq, TOTAL_ROUNDS, &tStudentVarianceLowerNq, &tStudentVarianceUpperNq, &tStudentVariancePrecisionNq, &tStudentVarianceCenterNq);
+        //Chiquare
+        varianceIC(roundsVarianceEstimatorNq, TOTAL_ROUNDS, KMIN, &chiSquareVarianceLowerNq, &chiSquareVarianceUpperNq, &chiSquareVariancePrecisionNq, &chiSquareVarianceCenterNq);
+
+        // Verifica se os ICs convergiram
+        if(!(valueIsInsideInterval(chiSquareVarianceLowerW, chiSquareVarianceUpperW, tStudentVarianceCenterW) 
+        && valueIsInsideInterval(tStudentVarianceLowerW,tStudentVarianceUpperW, chiSquareVarianceCenterW)) ){
+            KMIN += 100;
+            overlappingICs = 0;
+
         }
-        printf("[MEDIA]Rodada %d - EM: %f - EV: %f\n",rounds,meanICW.meanEstimator,meanICW.varianceEstimator);
-        printf("[VARIA]Rodada %d - EM: %f - EV: %f\n",rounds,meanICNq.meanEstimator,meanICNq.varianceEstimator);
-        //fprintf (fp, "%d;%lf;%lf\n",rounds,meanICW.meanEstimator, meanICW.varianceEstimator);
-        //printf("\n%lf\n", mean);
 
-        roundClient = 0;
+        fprintf (kMetric, "%d,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf\n",KMIN,
+        tStudentMeanLowerW,tStudentMeanUpperW,tStudentMeanPrecisionW,
+        tStudentVarianceLowerW,tStudentVarianceUpperW,tStudentVariancePrecisionW,
+        tStudentMeanLowerNq,tStudentMeanUpperNq,tStudentMeanPrecisionNq,
+        tStudentVarianceLowerNq,tStudentVarianceUpperNq,tStudentVariancePrecisionNq,
+        chiSquareVarianceLowerW,chiSquareVarianceUpperW,chiSquareVariancePrecisionW,
+        chiSquareVarianceLowerNq,chiSquareVarianceUpperNq,chiSquareVariancePrecisionNq);
+
+
+
         
-        queueDestroy(queueClients);
-    }    
-
-    meanIC(&meanICW, totalClients);
-    varianceIC(&varianceICW, totalClients);
-    meanIC(&meanICNq, totalClients);
-    varianceIC(&varianceICNq, totalClients);
-
-    printf("[MEDIA(W) ]: REAL: %f -> [%f,%f]\n",meanICW.meanEstimator,meanICW.lower,meanICW.upper);
-    printf("[VARIA(W) ]: REAL: %f -> [%f,%f]\n",varianceICW.varianceEstimator,varianceICW.lower,varianceICW.upper);
-    printf("[MEDIA(Nq)]: REAL: %f -> [%f,%f]\n",meanICNq.meanEstimator,meanICNq.lower,meanICNq.upper);
-    printf("[VARIA(Nq)]: REAL: %f -> [%f,%f]\n",varianceICNq.varianceEstimator,varianceICNq.lower,varianceICNq.upper);
-    printf("Precicion ICMedia[W ]: %f\n",meanICW.precisionIC);
-    printf("Precicion ICVaria[W ]: %f\n",varianceICW.precisionIC);
-    printf("Precicion ICMedia[Nq]: %f\n",meanICNq.precisionIC);
-    printf("Precicion ICVaria[Nq]: %f\n",varianceICNq.precisionIC);
-    fclose (fp);
+    } 
+    fclose (kMetric);
+    fclose (roundMetric);   
 }
 
-void lcfsSimulation() {
+void lcfsSimulation(int KMIN, float ARRIVAL_RATE) {
     int rounds = 3200;
     double mean;
     int totalClients = 0, service = 0;
@@ -212,9 +282,26 @@ void lcfsSimulation() {
     stackDestroy(stackClients);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+
+    int kmin = 0;
+    float arrival_rate = 0;
+
+    if( argc == 3 ) {
+      kmin = atoi(argv[1]);
+      arrival_rate = atof(argv[2]);
+    }
+    else if( argc > 3 ) {
+        printf("Argumentos demais para o programa, insira: %s <valor de k minimo inicial> <valor da taxa de chegada>\n", argv[0]);
+        exit(0);
+    }
+    else {
+        printf("Argumentos faltando para o programa, insira: %s <valor de k minimo inicial> <valor da taxa de chegada>\n", argv[0]);
+        exit(0);
+    }
     //lcfsSimulation();
-    fcfsSimulation();
+    printf("Iniciando simulação com lambda = %f\n", arrival_rate);
+    fcfsSimulation(kmin,arrival_rate);
 
     return 0;
 }

@@ -7,24 +7,22 @@
 #include <math.h>
 #include "alglib/specialfunctions.h"
 
-// Struct para o intervalo de confianca, seja ele da media ou da variancia
+// Struct para metricas das rodadas
 typedef struct {
-  double lower; //limiar minimo do intervalo de confiança
-  double upper; //limiar maximo do intervalo de confiança
   double sumValuesSample; // somatorio das amostras até agora
   double sumValuesSampleSquare; // (somatorio das amostras até agora)^2
   double meanEstimator;
   double varianceEstimator;
-  double precisionIC; 
 
 
 } SampleMetric;
 
 
 SampleMetric createSampleMetric(void);
-void meanIC(SampleMetric* sampleMetric, int sizeSample);
-void varianceIC(SampleMetric* sampleMetric, int sizeSample);
-double tStudentValue(int grausLiberdade);
+void varianceIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC);
+void meanIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC);
+
 void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample);
+int valueIsInsideInterval(double lower, double upper, double value);
 
 #endif

@@ -9,13 +9,10 @@
 SampleMetric createSampleMetric(void){
   SampleMetric sampleMetric;
   
-  sampleMetric.lower = 0;
-  sampleMetric.upper = 0;
   sampleMetric.sumValuesSample = 0;
   sampleMetric.sumValuesSampleSquare = 0;
   sampleMetric.meanEstimator = 0;
   sampleMetric.varianceEstimator = 0;
-  sampleMetric.precisionIC = 0;
   
 
   return sampleMetric;
@@ -41,37 +38,75 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
 
 }
 
-void meanIC(SampleMetric* sampleMetric, int sizeSample){
-    double tStudent = alglib::invstudenttdistribution((double) (sizeSample-1), 1-ALPHA/2);
-    printf("tstudent: %f\n", tStudent);
-    if(sizeSample > 0){
-        sampleMetric->lower = sampleMetric->meanEstimator - tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));
-        sampleMetric->upper = sampleMetric->meanEstimator + tStudent*(sqrt(sampleMetric->varianceEstimator)/sqrt(sizeSample));
+void meanIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC){
+    double tStudent = 0;
+    double meanEstimator = 0;
+    double varianceEstimator = 0;
+    if(sizeSample > 1){
+        tStudent = alglib::invstudenttdistribution((double) (sizeSample-1), 1-ALPHA/2);
+        
+        //Calculando o estimador da media da rodadas
+        for (int i=0; i< sizeSample; i++){
+            meanEstimator += sample[i];
+        }
+        meanEstimator = meanEstimator/sizeSample;
+        
+        //Calcular o estimador da variancia
+        for (int i=0; i< sizeSample; i++){
+            varianceEstimator += pow(sample[i] - meanEstimator,2);
+            
+            
+        }
+        varianceEstimator = varianceEstimator/(sizeSample-1);
 
-        sampleMetric->precisionIC = (sampleMetric->upper - sampleMetric->lower)/(sampleMetric->upper + sampleMetric->lower);
-    
+        *lower = meanEstimator - tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
+        *upper = meanEstimator + tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
+
+        *centerIC = (*upper + *lower)/2;
+
+        *precision = (*upper - *lower)/(*upper + *lower);
+
     }
 }
 
-void varianceIC(SampleMetric* sampleMetric, int sizeSample){
+void varianceIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC){
+    double meanEstimator = 0;
+    double varianceEstimator = 0;
+    
+    
 
-    /*  A função não retorna o quantil, e sim o valor x que a função P(X >= x) = y
+    if(sizeSample > 1) {
+        /*  A função não retorna o quantil, e sim o valor x que a função P(X >= x) = y
         Pra conseguir o quantil 100(1-alpha/2)% a partir disso fazemos 
         1 - P(X >= x) = P(X <= x) = 1 - y = 1 - alpha/2
         y = alpha/2
         Similarmente 1 - y = alpha/2 <=> y = 1 - alpha/2
-    */
+        */
 
-    if(sizeSample > 1) {
         double chiSquareUpper = alglib::invchisquaredistribution((double) (sizeSample-1), 1-ALPHA/2);
         double chiSquareLower = alglib::invchisquaredistribution((double) (sizeSample-1), ALPHA/2);
 
-        sampleMetric->lower = (sampleMetric->varianceEstimator*(sizeSample-1))/chiSquareLower;
-        sampleMetric->upper = (sampleMetric->varianceEstimator*(sizeSample-1))/chiSquareUpper;
-        sampleMetric->precisionIC = (chiSquareLower - chiSquareUpper)/(chiSquareLower + chiSquareUpper);
+        for (int i=0; i< sizeSample; i++){
+            meanEstimator += sample[i];
+            //Calcular o estimador da media
+        }
+        meanEstimator = meanEstimator/sizeSample;
+        
+        for (int i=0; i< sizeSample; i++){
+            varianceEstimator += pow(sample[i] - meanEstimator,2);
+            //Calcular o estimador da media
+        }
+        varianceEstimator = varianceEstimator/(sizeSample-1);
+
+        *lower = (varianceEstimator*(sizeSample-1)*sizeRound)/chiSquareLower;
+        *upper = (varianceEstimator*(sizeSample-1)*sizeRound)/chiSquareUpper;
+        *centerIC = (*upper + *lower)/2;
+
+        *precision = (chiSquareLower - chiSquareUpper)/(chiSquareLower + chiSquareUpper);
 
     }
+}
 
-
-
+int valueIsInsideInterval(double lower, double upper, double value){
+    return (value >= lower && value <= upper);
 }
