@@ -19,8 +19,8 @@ typedef struct {
 
 
 SampleMetric createSampleMetric(void);
-void varianceIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC);
-void meanIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC);
+void chiSquareIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC);
+void tStudentIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC);
 
 void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample);
 int valueIsInsideInterval(double lower, double upper, double value);

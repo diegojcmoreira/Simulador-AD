@@ -25,7 +25,9 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
     double meanEstimator = 0;
     double varianceEstimator = 0;
 
+
     sampleMetric->sumValuesSample = sampleMetric->sumValuesSample + value;
+
     sampleMetric->sumValuesSampleSquare = (sampleMetric->sumValuesSampleSquare + pow(value,2));
     //Só comeca a calcular os estimadores a partir de duas amostras
     if (sizeSample > 1) {
@@ -38,7 +40,7 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
 
 }
 
-void meanIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC){
+void tStudentIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC){
     double tStudent = 0;
     double meanEstimator = 0;
     double varianceEstimator = 0;
@@ -64,12 +66,12 @@ void meanIC(double* sample, int sizeSample, double* lower, double* upper, double
 
         *centerIC = (*upper + *lower)/2;
 
-        *precision = (*upper - *lower)/(*upper + *lower);
+        *precision = ((*upper - *lower)/(*upper + *lower))*100;
 
     }
 }
 
-void varianceIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC){
+void chiSquareIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC){
     double meanEstimator = 0;
     double varianceEstimator = 0;
     
@@ -93,16 +95,19 @@ void varianceIC(double* sample, int sizeSample, int sizeRound, double* lower, do
         meanEstimator = meanEstimator/sizeSample;
         
         for (int i=0; i< sizeSample; i++){
+        
             varianceEstimator += pow(sample[i] - meanEstimator,2);
             //Calcular o estimador da media
         }
         varianceEstimator = varianceEstimator/(sizeSample-1);
 
-        *lower = (varianceEstimator*(sizeSample-1)*sizeRound)/chiSquareLower;
-        *upper = (varianceEstimator*(sizeSample-1)*sizeRound)/chiSquareUpper;
+
+        *lower = (meanEstimator*(sizeSample-1))/chiSquareLower;
+        *upper = (meanEstimator*(sizeSample-1))/chiSquareUpper;
         *centerIC = (*upper + *lower)/2;
 
-        *precision = (chiSquareLower - chiSquareUpper)/(chiSquareLower + chiSquareUpper);
+        *precision = ((chiSquareLower - chiSquareUpper)/(chiSquareLower + chiSquareUpper))*100;
+
 
     }
 }
