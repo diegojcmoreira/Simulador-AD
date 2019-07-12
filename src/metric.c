@@ -3,7 +3,6 @@
 #define ALPHA 0.05
 
 /*  1 − alfa = 0.95 -> alfa = 0.05
-    tstudent(0.025)
 */
 
 SampleMetric createSampleMetric(void){
@@ -39,7 +38,7 @@ void sampleEstimator(SampleMetric* sampleMetric, double value, int sizeSample){
         
 
 }
-
+// Funcao calcula o IC usando a tstudent
 void tStudentIC(double* sample, int sizeSample, double* lower, double* upper, double* precision, double* centerIC){
     double tStudent = 0;
     double meanEstimator = 0;
@@ -61,6 +60,7 @@ void tStudentIC(double* sample, int sizeSample, double* lower, double* upper, do
         }
         varianceEstimator = varianceEstimator/(sizeSample-1);
 
+        // Calculando intervalos
         *lower = meanEstimator - tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
         *upper = meanEstimator + tStudent*(sqrt(varianceEstimator)/sqrt(sizeSample));
 
@@ -71,9 +71,9 @@ void tStudentIC(double* sample, int sizeSample, double* lower, double* upper, do
     }
 }
 
+// Funcao calcula o IC usando a chi quadrado
 void chiSquareIC(double* sample, int sizeSample, int sizeRound, double* lower, double* upper, double* precision, double* centerIC){
     double meanEstimator = 0;
-    double varianceEstimator = 0;
     
     
 
@@ -94,14 +94,8 @@ void chiSquareIC(double* sample, int sizeSample, int sizeRound, double* lower, d
         }
         meanEstimator = meanEstimator/sizeSample;
         
-        for (int i=0; i< sizeSample; i++){
-        
-            varianceEstimator += pow(sample[i] - meanEstimator,2);
-            //Calcular o estimador da media
-        }
-        varianceEstimator = varianceEstimator/(sizeSample-1);
 
-
+        // Calculando intervalos
         *lower = (meanEstimator*(sizeSample-1))/chiSquareLower;
         *upper = (meanEstimator*(sizeSample-1))/chiSquareUpper;
         *centerIC = (*upper + *lower)/2;

@@ -15,8 +15,9 @@ Queue* createQueue(int memberSize, int capacity) {
 
 //dobra capacidade da fila
 void expandQueue(Queue* q) {
-  q -> data = realloc(q -> data, q -> capacity * 2 * q -> memberSize);
   q -> capacity *= 2;
+  
+  q -> data = realloc(q -> data, q -> capacity * q -> memberSize);
 }
 
 //alinha a fila ao espaco de memoria representado pela variavel data
@@ -32,14 +33,17 @@ void queueOrganize(Queue *q) {
 
 void queueInsert(Queue *q,  void *element) {
   //verifica se a fila esta cheia
-  if (q -> rear == q -> capacity - 1)
+  if (q -> rear == q -> capacity - 1){
     expandQueue(q); //aumenta capacidade da fila
+    queueOrganize(q);
+  }
   
   q -> rear++;
   q -> size++;
   //calcula posicao de inicio do novo elemento
   void* target = (char*) q -> data + (q -> rear*q -> memberSize);
   memcpy(target, element, q -> memberSize);
+
 }
 
 int queueRemove(Queue *q,  void *target) {

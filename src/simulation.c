@@ -9,14 +9,40 @@
 #include "metric.h"
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #define SERVICE_RATE 1
 #define TOTAL_ROUNDS 3200
 #define EVENT 'e'
 #define ALPHA 0.05
-#define FIM_FASE_TRANSIENTE 10000
+#define FIM_FASE_TRANSIENTE 500
 
-void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
+void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy, FILE * fp) {
+
+    
+    //Calculando valores analiticos
+    double EW, VW, ENq, VNq;
+    
+    ENq = pow(ARRIVAL_RATE,2)/(1-ARRIVAL_RATE);
+    VNq = (pow(ARRIVAL_RATE,2)+pow(ARRIVAL_RATE,3)+pow(ARRIVAL_RATE,4))/(1-ARRIVAL_RATE);
+
+    if(strcmp(policy,"FCFS") == 0){
+        EW = ARRIVAL_RATE/(1-ARRIVAL_RATE);
+        VW = (2*ARRIVAL_RATE-pow(ARRIVAL_RATE,2))/pow(ARRIVAL_RATE,2);
+
+    }else{
+        EW = ARRIVAL_RATE/(1-ARRIVAL_RATE);
+        VW = (2*ARRIVAL_RATE-pow(ARRIVAL_RATE,2)-pow(ARRIVAL_RATE,3))/pow(ARRIVAL_RATE,3);
+
+    }
+
+    
+    printf("-----Valores Analiticos-----\n");
+    printf("E[W] = %f\n",EW);
+    printf("V[W] = %f\n",VW);
+    printf("E[Nq] = %f\n",ENq);
+    printf("V[Nq] = %f\n",VNq);
+    
     
     int rounds = 0;
     double mean;
@@ -50,20 +76,15 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
     //variancia da variancia das amostras de cada rodada de (Numero de pessoas na fila de espera)
     double chiSquareVarianceLowerNq, chiSquareVarianceUpperNq, chiSquareVariancePrecisionNq, chiSquareVarianceCenterNq;
     
-
-    
-
-    FILE * kMetric, *roundMetric;
-
-
-    kMetric = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\Valores_Para_K.txt","w");
-    roundMetric = fopen ("C:\\Users\\diego\\Documents\\Simulador-AD\\Valores_Por_Rodada.txt","w");
-    
+    double total_time;
+	clock_t start, end;
 
     defineSeed(seed);
 
     while(overlappingICs == 0){
         overlappingICs = 1;
+	    start = clock();
+
 
         // reiniciar simulação com k maior
         rounds = 0;
@@ -80,14 +101,15 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
         Stack *stackClients;
 
         if(strcmp(policy,"FCFS") == 0)
-            queueClients = createQueue(sizeof(Client), 1);
+            queueClients = createQueue(sizeof(Client), 5);
         else
-            stackClients = createStack(sizeof(Client), 1);
+            stackClients = createStack(sizeof(Client), 5);
 
         
 
         arrivalEvent = createEvent(EVENT, ARRIVAL_RATE); //gera evento de chegada
         endServiceEvent = createEvent(EVENT, SERVICE_RATE);
+
 
         
         while(rounds <= TOTAL_ROUNDS) {
@@ -103,6 +125,7 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
             roundClient = 0;
             service = 0;
 
+
         
             while(roundClient < KMIN) {
                 
@@ -115,9 +138,9 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
                     //cria cliente que esta chegando
                     Client client;
                     if(strcmp(policy,"FCFS") == 0)
-                        client = createClient(timeElapsed, timeElapsed, -1,queueClients -> size,rounds);
+                        client = createClient(timeElapsed, timeElapsed, -1,queueSize(queueClients),rounds);
                     else
-                        client = createClient(timeElapsed, timeElapsed, -1,stackClients -> size,rounds);
+                        client = createClient(timeElapsed, timeElapsed, -1,stackSize(stackClients),rounds);
 
 
                     //se ninguem esta sendo servido, entao a fila esta vazia
@@ -151,6 +174,7 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
                     //cliente termina de ser servido
                     clientBeingServiced.departureTime = timeElapsed;
 
+
                     //atualizando estimadores(só coleta metricas de clientes da rodada[sistema de cores] e quando terminar a fase transiente)
                     if(clientBeingServiced.myRound == rounds && fimDaFaseTransiente != 0){
                         sampleEstimator(&metricW, (clientBeingServiced.serviceStartTime - clientBeingServiced.arrivalTime), roundClient);
@@ -172,9 +196,10 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
                         else
                             service = 0;
                     }else {
-                        if(stackClients->top > 0) { 
+                        if(stackClients->top > -1) { 
                             service = 1;
                             stackPop(stackClients, &clientBeingServiced);
+                            
                             clientBeingServiced.serviceStartTime = timeElapsed;
                         }
                         else
@@ -193,19 +218,20 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
             roundsVarianceEstimatorNq[rounds] = metricNq.varianceEstimator;
 
 
-            fprintf (roundMetric, "%d,%d,%f,%f,%f,%f\n",rounds,KMIN,metricW.meanEstimator,metricW.varianceEstimator,metricNq.meanEstimator,metricNq.varianceEstimator);
+            // Grava medidas das metricas para fins comparativos
+            //fprintf (roundMetric, "%d,%d,%f,%f,%f,%f\n",rounds,KMIN,metricW.meanEstimator,metricW.varianceEstimator,metricNq.meanEstimator,metricNq.varianceEstimator);
 
-            if(totalClients > FIM_FASE_TRANSIENTE && rounds == 0) {
+            if(totalClients > FIM_FASE_TRANSIENTE && rounds == 0 && fimDaFaseTransiente == 0) {
                 printf("TERMINOU A FASE TRANSIENTE\n");
                 fimDaFaseTransiente = 1;
             }    
 
             rounds++; 
+            //Reseta o numero de rodadas se ainda estiver no periodo transiente
             if(fimDaFaseTransiente == 0){
                 rounds = 0;
 
             }
-
 
             
         }    
@@ -213,22 +239,16 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
 
         //Tempo medio de espera na fila
         tStudentIC(roundsMeanEstimatorW, TOTAL_ROUNDS, &tStudentMeanLowerW, &tStudentMeanUpperW, &tStudentMeanPrecisionW,&tStudentMeanCenterW);
-        //varianceICChiSquare(roundsMeanEstimatorW, TOTAL_ROUNDS, KMIN, &tStudentVarianceLowerW, &tStudentVarianceLowerW, &tStudentVariancePrecisionW);
 
         //Variancia do tempo medio de espera na fila
-        //TStudent
         tStudentIC(roundsVarianceEstimatorW, TOTAL_ROUNDS, &tStudentVarianceLowerW, &tStudentVarianceUpperW, &tStudentVariancePrecisionW, &tStudentVarianceCenterW);
-        //ChiSquare
         chiSquareIC(roundsVarianceEstimatorW, TOTAL_ROUNDS, KMIN, &chiSquareVarianceLowerW, &chiSquareVarianceUpperW, &chiSquareVariancePrecisionW, &chiSquareVarianceCenterW);
 
         //Número médio de pessoas na fila de espera
         tStudentIC(roundsMeanEstimatorNq, TOTAL_ROUNDS, &tStudentMeanLowerNq, &tStudentMeanUpperNq, &tStudentMeanPrecisionNq,&tStudentMeanCenterNq);
-        //varianceICChiSquare(roundsMeanEstimatorNq, TOTAL_ROUNDS, KMIN, &tStudentVarianceLowerNq, &tStudentVarianceUpperNq, &tStudentVariancePrecisionNq);
 
         //Variancia do numero de pessoas na fila de espera
-        //tstudent    
         tStudentIC(roundsVarianceEstimatorNq, TOTAL_ROUNDS, &tStudentVarianceLowerNq, &tStudentVarianceUpperNq, &tStudentVariancePrecisionNq, &tStudentVarianceCenterNq);
-        //Chiquare
         chiSquareIC(roundsVarianceEstimatorNq, TOTAL_ROUNDS, KMIN, &chiSquareVarianceLowerNq, &chiSquareVarianceUpperNq, &chiSquareVariancePrecisionNq, &chiSquareVarianceCenterNq);
 
         
@@ -240,32 +260,61 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
         //     overlappingICs = 0;
 
         // }
+        end = clock();
+        total_time = ((double) (end - start)) / CLK_TCK;
 
-        fprintf (kMetric, "%d,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf,[%lf;%lf],%lf\n",KMIN,
-        tStudentMeanLowerW,tStudentMeanUpperW,tStudentMeanPrecisionW,
-        tStudentVarianceLowerW,tStudentVarianceUpperW,tStudentVariancePrecisionW,
-        tStudentMeanLowerNq,tStudentMeanUpperNq,tStudentMeanPrecisionNq,
-        tStudentVarianceLowerNq,tStudentVarianceUpperNq,tStudentVariancePrecisionNq,
-        chiSquareVarianceLowerW,chiSquareVarianceUpperW,chiSquareVariancePrecisionW,
-        chiSquareVarianceLowerNq,chiSquareVarianceUpperNq,chiSquareVariancePrecisionNq);
+        //Imprimir metricas calculadas
+        fprintf (fp, "%d,[%lf;%lf],%lf,%lf,[%lf;%lf],%lf,%lf,[%lf;%lf],%lf,%lf,[%lf;%lf],%lf,%lf,[%lf;%lf],%lf,%lf,[%lf;%lf],%lf,%lf,%f\n",KMIN,
+        tStudentMeanLowerW,tStudentMeanUpperW,tStudentMeanCenterW, tStudentMeanPrecisionW,
+        tStudentVarianceLowerW,tStudentVarianceUpperW,tStudentVarianceCenterW,tStudentVariancePrecisionW,
+        tStudentMeanLowerNq,tStudentMeanUpperNq,tStudentMeanCenterNq,tStudentMeanPrecisionNq,
+        tStudentVarianceLowerNq,tStudentVarianceUpperNq,tStudentVarianceCenterNq,tStudentVariancePrecisionNq,
+        chiSquareVarianceLowerW,chiSquareVarianceUpperW,chiSquareVarianceCenterW,chiSquareVariancePrecisionW,
+        chiSquareVarianceLowerNq,chiSquareVarianceUpperNq,chiSquareVarianceCenterNq,chiSquareVariancePrecisionNq,total_time);
+       
+       
 
-        printf("Processado com valor de K = %d\n", KMIN);
-
-        /*
+        
         //Verificar precisao de 5%
-        if(tStudentMeanPrecisionW > 5 || tStudentVariancePrecisionW >5 || chiSquareVariancePrecisionW > 5 || 
-        tStudentMeanPrecisionNq > 5 || tStudentVariancePrecisionNq > 5 || chiSquareVariancePrecisionNq > 5){
-            KMIN += 1;
+        
+        /* if((tStudentMeanPrecisionW > 5 || tStudentVariancePrecisionW >5 || chiSquareVariancePrecisionW > 5 || 
+        tStudentMeanPrecisionNq > 5 || tStudentVariancePrecisionNq > 5 || chiSquareVariancePrecisionNq > 5) ||
+        !valueIsInsideInterval(tStudentMeanLowerW,tStudentMeanUpperW,EW) || 
+        !valueIsInsideInterval(tStudentVarianceLowerW,tStudentVarianceUpperW,VW) || 
+        !valueIsInsideInterval(tStudentMeanLowerNq,tStudentMeanUpperNq,ENq) || 
+        !valueIsInsideInterval(tStudentVarianceLowerNq,tStudentVarianceUpperNq,VNq) || 
+        !valueIsInsideInterval(chiSquareVarianceLowerW,chiSquareVarianceUpperW,VW) ||         
+        !valueIsInsideInterval(chiSquareVarianceLowerNq,chiSquareVarianceUpperNq,VNq)){
+            KMIN += 100;
             overlappingICs = 0;
-        }
-        */
+        } */
+        
 
-        if(!(valueIsInsideInterval(chiSquareVarianceLowerW, chiSquareVarianceUpperW, tStudentVarianceCenterW) 
-        && valueIsInsideInterval(tStudentVarianceLowerW,tStudentVarianceUpperW, chiSquareVarianceCenterW)) ){
+        // verifica se os ICs convergem, mantendo o valor analitico dentro do IC    
+        /* if(!(valueIsInsideInterval(chiSquareVarianceLowerW, chiSquareVarianceUpperW, tStudentVarianceCenterW) 
+        && valueIsInsideInterval(tStudentVarianceLowerW,tStudentVarianceUpperW, chiSquareVarianceCenterW)) ||
+            !valueIsInsideInterval(tStudentMeanLowerW,tStudentMeanUpperW,EW) || 
+            !valueIsInsideInterval(tStudentVarianceLowerW,tStudentVarianceUpperW,VW) || 
+            !valueIsInsideInterval(tStudentMeanLowerNq,tStudentMeanUpperNq,ENq) || 
+            !valueIsInsideInterval(tStudentVarianceLowerNq,tStudentVarianceUpperNq,VNq) || 
+            !valueIsInsideInterval(chiSquareVarianceLowerW,chiSquareVarianceUpperW,VW) ||         
+            !valueIsInsideInterval(chiSquareVarianceLowerNq,chiSquareVarianceUpperNq,VNq) ){
             KMIN += 100;
             overlappingICs = 0;
 
-        }
+        } */
+
+        printf("Simulacao para KMin = %d durou %f segundos\n",KMIN,total_time);
+
+        
+        //Não incrementar o K minimo, executar apenas o k de entrada
+        
+        //Não incrementa o K, para que durante os testes do professor ele possa executar para Ks unicos
+        
+        //KMIN += 5000;
+        //overlappingICs = 0;
+
+        
 
 
         if(strcmp(policy,"FCFS") == 0)
@@ -274,23 +323,26 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy) {
             stackDestroy(stackClients);
         
     } 
-    
-    fclose (kMetric);
-    fclose (roundMetric);   
+       
 }
-
-
 
 int main(int argc, char *argv[]) {
 
     
 
+
     int kmin = 0;
     int seed = 0;
     float arrival_rate = 0;
     char* policy;
+    char dir[PATH_MAX];
 
-    
+    //Montando caminho para o arquivo das metricas localmente
+    if (getcwd(dir, sizeof(dir)))
+        strcat(dir, "\\Metricas_Simulador.txt");
+
+
+    //Verificar se o usuario digitou um valor para semente
     if( argc == 5 )
       seed = atoi(argv[4]);
     else
@@ -298,9 +350,16 @@ int main(int argc, char *argv[]) {
 
 
 
-    if( argc == 4 ) {
+    //Coleta os outros argumentos digitados pelo usuario
+    if( argc >= 4 && argc <=5) {
     
       kmin = atoi(argv[1]);
+    
+      if (kmin < 5){
+        printf("K minimo pequeno demais, insira kmim > 5\n");
+        exit(0);    
+      }
+
       arrival_rate = atof(argv[2]);
       policy = argv[3];
       
@@ -318,9 +377,19 @@ int main(int argc, char *argv[]) {
         exit(0);  
     }
 
-    //lcfsSimulation();
-    printf("Iniciando simulação com lambda = %f\n", arrival_rate);
-    Simulation(seed, kmin,arrival_rate, policy);
+
+    FILE *fp; 
+    fp = fopen(dir,"w");
+
+
+    printf("Iniciando execucao com lambda = %f\n", arrival_rate);
+
+    Simulation(seed, kmin,arrival_rate, policy,fp);
+
+
+
+    fclose (fp);
+
 
     return 0;
 }

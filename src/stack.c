@@ -14,8 +14,11 @@ Stack* createStack(int memberSize, int capacity) {
 
 //dobra capacidade da pilha
 void expandStack(Stack* s) {
+  printf("Antes\n");
   s -> data = realloc(s -> data, s -> capacity * 2 * s -> memberSize);
   s -> capacity *= 2;
+  printf("depois\n");
+
 }
 
 void stackPush(Stack *s,  void *element) {
@@ -28,18 +31,24 @@ void stackPush(Stack *s,  void *element) {
   //calcula posicao de inicio do novo elemento
   void* target = (char*) s -> data + (s -> top*s -> memberSize);
   memcpy(target, element, s -> memberSize);
+
 }
 
 int stackPop(Stack *s,  void *target) {
+
   if (s->top == -1) {
     return 1;
   }
 
+  s->size--;
+
+
   //calcula posicao de inicio do ultimo elemento da pilha
   void* source = (char*) s -> data + (s -> top * s -> memberSize);
   s->top--;
-  s->size--;
+  
   memcpy(target, source, s->memberSize);
+
   return 0;
 }
 
@@ -49,10 +58,5 @@ void stackDestroy(Stack *s) {
 }
 
 int stackSize(Stack *s) {
-  int size = s -> top;
-
-  if (size < 0)
-    return 0;
-  else
-    return size + 1;
+  return s -> size;
 }
