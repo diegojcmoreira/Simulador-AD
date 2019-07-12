@@ -24,7 +24,7 @@ void Simulation(int seed, int KMIN, float ARRIVAL_RATE, char* const policy, FILE
     double EW, VW, ENq, VNq;
     
     ENq = pow(ARRIVAL_RATE,2)/(1-ARRIVAL_RATE);
-    VNq = (pow(ARRIVAL_RATE,2)+pow(ARRIVAL_RATE,3)+pow(ARRIVAL_RATE,4))/(1-ARRIVAL_RATE);
+    VNq = (pow(ARRIVAL_RATE,2)+pow(ARRIVAL_RATE,3)-pow(ARRIVAL_RATE,4))/(1-ARRIVAL_RATE);
 
     if(strcmp(policy,"FCFS") == 0){
         EW = ARRIVAL_RATE/(1-ARRIVAL_RATE);
